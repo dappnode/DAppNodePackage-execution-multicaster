@@ -57,17 +57,18 @@ export default async function startServer(
       }
     }
 
+    console.log(
+      `--------\nHandling ${(<any>request.body).method} and forwarding to ${
+        priorityEC.name
+      }`
+    );
+
     if (topPriorityECName !== priorityEC.name)
       console.warn(
-        `${topPriorityECName} is execution engine with top priority but it is unsynced or unavailable, using ${priorityEC.name}`
+        `${topPriorityECName} is execution engine with top priority but it is unsynced or unavailable.`
       );
 
     // forward all trafic to main EC with its jwt
-    console.log(
-      `Forwarding request to ${priorityEC.name} with method ${
-        (<any>request.body).method
-      } and sending back response`
-    );
     reply.from(priorityEC.url, {
       rewriteRequestHeaders: (originalReq, headers) => {
         return {
@@ -87,14 +88,12 @@ export default async function startServer(
 
     if (group === "engine" && method !== "getPayloadV1") {
       // only engine routes that are not getPayloadV1 we multiplex. Ideally, we would check here for forkChoiceUpdatedV1 and drop payloadAttributes
+      console.log(
+        "Multiplexing request to:",
+        ECs.map((x) => x.name).reduce((prev, curr) => prev + " " + curr, "")
+      );
       for (const ec of ECs) {
         if (ec.name === priorityEC.name) continue; // Dealt with priorityEC
-
-        console.log(
-          `Forwarding multiplexed request to ${ec.name} with method ${
-            (<any>request.body).method
-          } and ignoring response`
-        );
 
         reply.from(ec.url, {
           onResponse: (request, reply, res) => {

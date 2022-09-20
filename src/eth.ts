@@ -3,7 +3,7 @@ import axios, { AxiosError } from "axios";
 import jwt from "jsonwebtoken";
 
 const SYNCING_DELAY_TRESHOLD = parseInt(
-  process.env.SYNCING_DELAY_TRESHOLD || "60"
+  process.env.SYNCING_DELAY_TRESHOLD || "10"
 );
 
 async function callAuthEngine(
@@ -73,6 +73,7 @@ async function refreshStatus(ecs: ExecutionClientEngine[]) {
     if (ec.latestBlockNumber + SYNCING_DELAY_TRESHOLD < maxBlockNumber)
       ec.status = ExecutionSyncStatus.Syncing;
   }
+  console.log("Refreshed execution client status.");
 }
 
 export { refreshStatus };
