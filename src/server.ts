@@ -1,4 +1,4 @@
-import fastify from "fastify";
+import fastify, { FastifyRequest } from "fastify";
 import replyFrom from "@fastify/reply-from";
 import fastifyjwt from "@fastify/jwt";
 import jwt from "jsonwebtoken";
@@ -9,18 +9,28 @@ const MULTICASTER_JWT =
   "7ad9cfdec75eceb662f5e48f5765701c17f51a5233a60fbcfa5f9e495fa99d18";
 const PORT = parseInt(process.env.PORT || "8551");
 
+function getPriorityExecutionClient(executionClients: ExecutionClientEngine[]) {
+  if (executionClients.length === 0) return undefined;
+  return executionClients.reduce((min, ec) =>
+    min.priority < ec.priority ? min : ec
+  );
+}
+
 export default async function startServer(
   executionClients: ExecutionClientEngine[]
 ) {
+  if (executionClients.length === 0) {
+    throw new Error("Server cannot be initialized without execution clients");
+  }
   const proxy = fastify();
   proxy.register(replyFrom);
   proxy.register(fastifyjwt, {
     secret: MULTICASTER_JWT,
   });
 
-  const topPriorityECName = executionClients.reduce((min, ec) =>
-    min.priority < ec.priority ? min : ec
-  ).name;
+  const topPriorityExecutionClientName = (
+    getPriorityExecutionClient(executionClients) as ExecutionClientEngine
+  ).name; // safe since it is only undefined for executionClients.length === 0
 
   //    proxy.addHook("onRequest", async (request, reply) => {
   //        try {
@@ -31,39 +41,31 @@ export default async function startServer(
   //    })
 
   proxy.post("/", (request, reply) => {
-    const syncedECs = executionClients.filter(
+    const syncedExecutionClients = executionClients.filter(
       (ec) => ec.status === ExecutionSyncStatus.Synced
     );
-    const syncingECs = executionClients.filter(
+    const syncingExecutionClients = executionClients.filter(
       (ec) => ec.status === ExecutionSyncStatus.Syncing
     );
 
-    let priorityEC: ExecutionClientEngine;
+    // get main Execution client from synced list, if not possible, try synicng list
+    const priorityExecutionClient =
+      getPriorityExecutionClient(syncedExecutionClients) ??
+      getPriorityExecutionClient(syncingExecutionClients);
 
-    // get main EC from synced list, if not possible, try synicng list
-    if (syncedECs.length !== 0) {
-      priorityEC = syncedECs.reduce((min, ec) =>
-        min.priority < ec.priority ? min : ec
-      );
-    } else {
-      if (syncingECs.length !== 0) {
-        priorityEC = syncingECs.reduce((min, ec) =>
-          min.priority < ec.priority ? min : ec
-        );
-      } else {
-        reply.code(500).send("No execution engine available");
-        console.warn("No execution engine available");
-        return;
-      }
+    if (!priorityExecutionClient) {
+      reply.code(500).send("No execution engine available");
+      console.warn("No execution engine available");
+      return;
     }
 
-    if (topPriorityECName !== priorityEC.name)
+    if (topPriorityExecutionClientName !== priorityExecutionClient.name)
       console.warn(
-        `${topPriorityECName} is execution engine with top priority but it is unsynced or unavailable.`
+        `${topPriorityExecutionClientName} is execution engine with top priority but it is unsynced or unavailable.`
       );
 
     // forward all trafic to main EC with its jwt
-    reply.from(priorityEC.url, {
+    reply.from(priorityExecutionClient.url, {
       rewriteRequestHeaders: (originalReq, headers) => {
         return {
           ...headers,
@@ -71,26 +73,26 @@ export default async function startServer(
             "Bearer " +
             jwt.sign(
               { iat: Math.floor(Date.now() / 1000) },
-              priorityEC.jwtsecret
+              priorityExecutionClient.jwtsecret
             ),
         };
       },
     });
 
+    const method = (request.body as FastifyRequest).method;
+
     console.log(
-      `--------\nHandled ${(<any>request.body).method} by forwarding it to ${
-        priorityEC.name
-      }`
+      `--------\nHandled ${method} by forwarding it to ${priorityExecutionClient.name}`
     );
 
-    const [group, method]: string[] = (<any>request.body).method.split("_");
-    if (group !== "engine" || method === "getPayloadV1") return; // only engine routes that are not getPayloadV1 we multiplex. Ideally, we would check here for forkChoiceUpdatedV1 and drop payloadAttributes
+    const [mod, call] = method.split("_");
+    if (mod !== "engine" || call === "getPayloadV1") return; // only engine routes that are not getPayloadV1 we multicast. Ideally, we would check for forkChoiceUpdatedV1 and drop payloadAttributes
 
-    const ECs = syncedECs
-      .concat(syncingECs)
-      .filter((ec) => ec.name !== priorityEC.name);
+    const executionToMulticast = syncedExecutionClients
+      .concat(syncingExecutionClients)
+      .filter((ec) => ec.name !== priorityExecutionClient.name);
 
-    for (const ec of ECs) {
+    for (const ec of executionToMulticast) {
       reply.from(ec.url, {
         onResponse: (request, reply, res) => {
           reply.removeHeader("content-length"); // don't care for response of other EC, just remove content-length they may set
@@ -108,8 +110,9 @@ export default async function startServer(
     }
 
     console.log(
-      `Multicasted ${(<any>request.body).method} to:`,
-      ECs.map((x) => x.name).reduce((prev, curr) => prev + " " + curr, "")
+      `Multicasted ${method} to: ${executionToMulticast
+        .map((x) => x.name)
+        .join(" ")}`
     );
   });
 

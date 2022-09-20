@@ -7,12 +7,12 @@ const SYNCING_DELAY_TRESHOLD = parseInt(
 );
 
 async function callAuthEngine(
-  ec: ExecutionClientEngine,
+  executionClient: ExecutionClientEngine,
   method: string,
   params: any[]
 ) {
   return await axios.post(
-    ec.url,
+    executionClient.url,
     {
       jsonrpc: "2.0",
       method: method,
@@ -24,41 +24,59 @@ async function callAuthEngine(
       headers: {
         Authorization:
           "Bearer " +
-          jwt.sign({ iat: Math.floor(Date.now() / 1000) }, ec.jwtsecret),
+          jwt.sign(
+            { iat: Math.floor(Date.now() / 1000) },
+            executionClient.jwtsecret
+          ),
       },
     }
   );
 }
 
-async function refreshInvidualStatus(ec: ExecutionClientEngine): Promise<void> {
+async function refreshInvidualStatus(
+  executionClient: ExecutionClientEngine
+): Promise<void> {
   try {
-    const syncingResponse = await callAuthEngine(ec, "eth_syncing", []);
+    const syncingResponse = await callAuthEngine(
+      executionClient,
+      "eth_syncing",
+      []
+    );
 
     if (syncingResponse.data.result === false) {
-      ec.status = ExecutionSyncStatus.Synced;
-      const numberResponse = await callAuthEngine(ec, "eth_blockNumber", []);
-      ec.latestBlockNumber = parseInt(numberResponse.data.result, 16);
+      executionClient.status = ExecutionSyncStatus.Synced;
+      const numberResponse = await callAuthEngine(
+        executionClient,
+        "eth_blockNumber",
+        []
+      );
+      executionClient.latestBlockNumber = parseInt(
+        numberResponse.data.result,
+        16
+      );
     } else {
-      ec.status = ExecutionSyncStatus.Syncing;
-      ec.latestBlockNumber = parseInt(
+      executionClient.status = ExecutionSyncStatus.Syncing;
+      executionClient.latestBlockNumber = parseInt(
         syncingResponse.data.result.currentBlock,
         16
       );
     }
   } catch (e) {
-    ec.status = ExecutionSyncStatus.Unavailable;
-    ec.latestBlockNumber = 0;
+    executionClient.status = ExecutionSyncStatus.Unavailable;
+    executionClient.latestBlockNumber = 0;
     if (axios.isAxiosError(e))
       console.warn(
-        `Error during status refresh of ${ec.name}: ${(<AxiosError>e).message}`
+        `Error during status refresh of ${executionClient.name}: ${
+          (<AxiosError>e).message
+        }`
       );
     else console.warn(e);
   }
 }
 
-async function refreshStatus(ecs: ExecutionClientEngine[]) {
-  await Promise.all(ecs.map((ec) => refreshInvidualStatus(ec)));
-  const syncedECs = ecs.filter(
+async function refreshStatus(executionClients: ExecutionClientEngine[]) {
+  await Promise.all(executionClients.map((ec) => refreshInvidualStatus(ec)));
+  const syncedExecutionClients = executionClients.filter(
     (ec) => ec.status === ExecutionSyncStatus.Synced
   );
   /*
@@ -67,9 +85,9 @@ async function refreshStatus(ecs: ExecutionClientEngine[]) {
     But for abundance of caution I left this here, it won't hurt.
     */
   const maxBlockNumber = Math.max(
-    ...syncedECs.map((ec) => ec.latestBlockNumber)
+    ...syncedExecutionClients.map((ec) => ec.latestBlockNumber)
   );
-  for (const ec of syncedECs) {
+  for (const ec of syncedExecutionClients) {
     if (ec.latestBlockNumber + SYNCING_DELAY_TRESHOLD < maxBlockNumber)
       ec.status = ExecutionSyncStatus.Syncing;
   }
