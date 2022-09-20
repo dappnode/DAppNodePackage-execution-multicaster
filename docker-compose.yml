@@ -8,3 +8,6 @@ services:
       - GETH_PRIORITY=1
       - NETHERMIND_PRIORITY=2
       - ERIGON_PRIORITY=3
+      - PORT=
+      - JWT=
+      - SYNCING_DELAY_TRESHOLD=
