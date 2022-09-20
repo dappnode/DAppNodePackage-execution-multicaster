@@ -1,0 +1,10 @@
+version: "3.4"
+services:
+  execution-multicaster.dnp.dappnode.eth:
+    build: .
+    image: "execution-multicaster.dnp.dappnode.eth:0.1.0"
+    restart: unless-stopped
+    environment:
+      - GETH_PRIORITY=1
+      - NETHERMIND_PRIORITY=2
+      - ERIGON_PRIORITY=3
