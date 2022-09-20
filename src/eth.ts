@@ -37,7 +37,7 @@ async function refreshInvidualStatus(ec: ExecutionClientEngine): Promise<void> {
     if (syncingResponse.data.result === false) {
       ec.status = ExecutionSyncStatus.Synced;
       const numberResponse = await callAuthEngine(ec, "eth_blockNumber", []);
-      ec.latestBlockNumber = parseInt(numberResponse.data.result.number, 16);
+      ec.latestBlockNumber = parseInt(numberResponse.data.result, 16);
     } else {
       ec.status = ExecutionSyncStatus.Syncing;
       ec.latestBlockNumber = parseInt(
