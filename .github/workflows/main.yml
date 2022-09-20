@@ -10,7 +10,6 @@ on:
 
 jobs:
   unit-test:
-    defaults:
     runs-on: ubuntu-latest
     name: Unit tests
     steps:
