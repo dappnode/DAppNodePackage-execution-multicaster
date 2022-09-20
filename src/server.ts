@@ -4,7 +4,7 @@ import fastifyjwt from "@fastify/jwt";
 import jwt from "jsonwebtoken";
 import { ExecutionClientEngine, ExecutionSyncStatus } from "./types";
 
-const MULTIPLEXER_JWT =
+const MULTICASTER_JWT =
   process.env.JWT ||
   "7ad9cfdec75eceb662f5e48f5765701c17f51a5233a60fbcfa5f9e495fa99d18";
 const PORT = parseInt(process.env.PORT || "8551");
@@ -15,7 +15,7 @@ export default async function startServer(
   const proxy = fastify();
   proxy.register(replyFrom);
   proxy.register(fastifyjwt, {
-    secret: MULTIPLEXER_JWT,
+    secret: MULTICASTER_JWT,
   });
 
   const topPriorityECName = executionClients.reduce((min, ec) =>
@@ -57,12 +57,6 @@ export default async function startServer(
       }
     }
 
-    console.log(
-      `--------\nHandling ${(<any>request.body).method} and forwarding to ${
-        priorityEC.name
-      }`
-    );
-
     if (topPriorityECName !== priorityEC.name)
       console.warn(
         `${topPriorityECName} is execution engine with top priority but it is unsynced or unavailable.`
@@ -83,34 +77,40 @@ export default async function startServer(
       },
     });
 
-    const ECs = syncedECs.concat(syncingECs);
+    console.log(
+      `--------\nHandled ${(<any>request.body).method} by forwarding it to ${
+        priorityEC.name
+      }`
+    );
+
     const [group, method]: string[] = (<any>request.body).method.split("_");
+    if (group !== "engine" || method === "getPayloadV1") return; // only engine routes that are not getPayloadV1 we multiplex. Ideally, we would check here for forkChoiceUpdatedV1 and drop payloadAttributes
 
-    if (group === "engine" && method !== "getPayloadV1") {
-      // only engine routes that are not getPayloadV1 we multiplex. Ideally, we would check here for forkChoiceUpdatedV1 and drop payloadAttributes
-      console.log(
-        "Multiplexing request to:",
-        ECs.map((x) => x.name).reduce((prev, curr) => prev + " " + curr, "")
-      );
-      for (const ec of ECs) {
-        if (ec.name === priorityEC.name) continue; // Dealt with priorityEC
+    const ECs = syncedECs
+      .concat(syncingECs)
+      .filter((ec) => ec.name !== priorityEC.name);
 
-        reply.from(ec.url, {
-          onResponse: (request, reply, res) => {
-            reply.removeHeader("content-length"); // don't care for response of other EC, just remove content-length they may set
-          },
-          rewriteRequestHeaders: (originalReq, headers) => {
-            // add custom jwt for every client
-            return {
-              ...headers,
-              authorization:
-                "Bearer " +
-                jwt.sign({ iat: Math.floor(Date.now() / 1000) }, ec.jwtsecret),
-            };
-          },
-        });
-      }
+    for (const ec of ECs) {
+      reply.from(ec.url, {
+        onResponse: (request, reply, res) => {
+          reply.removeHeader("content-length"); // don't care for response of other EC, just remove content-length they may set
+        },
+        rewriteRequestHeaders: (originalReq, headers) => {
+          // add custom jwt for every client
+          return {
+            ...headers,
+            authorization:
+              "Bearer " +
+              jwt.sign({ iat: Math.floor(Date.now() / 1000) }, ec.jwtsecret),
+          };
+        },
+      });
     }
+
+    console.log(
+      `Multicasted ${(<any>request.body).method} to:`,
+      ECs.map((x) => x.name).reduce((prev, curr) => prev + " " + curr, "")
+    );
   });
 
   proxy.listen({ port: PORT, host: "0.0.0.0" }, (err, address) => {
