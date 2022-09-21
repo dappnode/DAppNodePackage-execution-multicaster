@@ -4,9 +4,11 @@ import fastifyjwt from "@fastify/jwt";
 import jwt from "jsonwebtoken";
 import { ExecutionClientEngine, ExecutionSyncStatus } from "./types";
 
-const MULTICASTER_JWT =
+const MULTICASTER_JWT = Buffer.from(
   process.env.JWT ||
-  "7ad9cfdec75eceb662f5e48f5765701c17f51a5233a60fbcfa5f9e495fa99d18";
+    "7ad9cfdec75eceb662f5e48f5765701c17f51a5233a60fbcfa5f9e495fa99d18",
+  "hex"
+);
 const PORT = parseInt(process.env.PORT || "8551");
 
 function getPriorityExecutionClient(executionClients: ExecutionClientEngine[]) {
@@ -22,7 +24,10 @@ export default async function startServer(
   if (executionClients.length === 0) {
     throw new Error("Server cannot be initialized without execution clients");
   }
-  const proxy = fastify();
+  const proxy = fastify({
+    bodyLimit: 10485760, // 10 MiB
+    logger: (process.env.PROXY_LOGGER ?? "false") === "true",
+  });
   proxy.register(replyFrom);
   proxy.register(fastifyjwt, {
     secret: MULTICASTER_JWT,
@@ -41,6 +46,8 @@ export default async function startServer(
   //    })
 
   proxy.post("/", (request, reply) => {
+    // Both engine_newPayload and enigne_forkChoiceUpdatedV1 can be used to update syncing status of execution clients, 
+    // it seems to me that it is better to do it asynchronously and less often.
     const syncedExecutionClients = executionClients.filter(
       (ec) => ec.status === ExecutionSyncStatus.Synced
     );

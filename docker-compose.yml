@@ -11,3 +11,4 @@ services:
       - PORT=
       - JWT=
       - SYNCING_DELAY_TRESHOLD=
+      - PROXY_LOGGER=

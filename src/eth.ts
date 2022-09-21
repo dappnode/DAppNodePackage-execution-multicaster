@@ -91,7 +91,7 @@ async function refreshStatus(executionClients: ExecutionClientEngine[]) {
     if (ec.latestBlockNumber + SYNCING_DELAY_TRESHOLD < maxBlockNumber)
       ec.status = ExecutionSyncStatus.Syncing;
   }
-  console.log("Refreshed execution client status.");
+  console.log("** Refreshed execution client status. **");
 }
 
 export { refreshStatus };
