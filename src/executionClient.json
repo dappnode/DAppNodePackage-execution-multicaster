@@ -12,9 +12,15 @@
     "priority": 2
   },
   {
+    "name": "Besu",
+    "url": "http://besu.dappnode:8551",
+    "jwtsecret": "7ad9cfdec75eceb662f5e48f5765701c17f51a5233a60fbcfa5f9e495fa99d18",
+    "priority": 3
+  },
+  {
     "name": "Erigon",
     "url": "http://erigon.dappnode:8551",
     "jwtsecret": "7ad9cfdec75eceb662f5e48f5765701c17f51a5233a60fbcfa5f9e495fa99d18",
-    "priority": 3
+    "priority": 4
   }
 ]
