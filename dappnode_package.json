@@ -6,7 +6,8 @@
   "author": "dappnode",
   "categories": ["Developer tools"],
   "links": {
-    "homepage": "https://your-project-homepage-or-docs.io"
+    "homepage": "https://your-project-homepage-or-docs.io",
+    "apiEngine": "http://execution-multicaster.dappnode:8551
   },
   "architectures": ["linux/amd64"],
   "license": "GPL-3.0"
