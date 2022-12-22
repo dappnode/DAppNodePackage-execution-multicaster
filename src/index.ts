@@ -9,11 +9,16 @@ async function main() {
     status: ExecutionSyncStatus.Unavailable,
     latestBlockNumber: 0,
   };
-  const allExecutionClients: ExecutionClientEngine[] = ecJSON.map((x) => {
+  const consensusClient = process.env._DAPPNODE_GLOBAL_CONSENSUS_CLIENT_MAINNET ?? "default";
+  console.log("Consensus client in use:", consensusClient);
+
+  const jwtsecret = Buffer.from(ecJSON.consensusJWT[consensusClient as keyof typeof ecJSON.consensusJWT]); //gets proper jwt secret
+
+  const allExecutionClients: ExecutionClientEngine[] = ecJSON.executionClients.map((x) => {
     return {
       ...ecDefaults,
+      jwtsecret,
       ...x,
-      jwtsecret: Buffer.from(x.jwtsecret, "hex"),
     };
   });
   // env overrides
@@ -48,7 +53,7 @@ async function main() {
     }
   });
 
-  startServer(executionClients);
+  startServer(executionClients, jwtsecret);
 }
 
 main().catch(() => process.exit(1));
