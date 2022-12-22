@@ -1,26 +1,33 @@
-[
-  {
-    "name": "Geth",
-    "url": "http://geth.dappnode:8551",
-    "jwtsecret": "7ad9cfdec75eceb662f5e48f5765701c17f51a5233a60fbcfa5f9e495fa99d18",
-    "priority": 1
+
+{
+  "consensusJWT": {
+    "default": "7ad9cfdec75eceb662f5e48f5765701c17f51a5233a60fbcfa5f9e495fa99d15",
+    "lighthouse.dnp.dappnode.eth": "7ad9cfdec75eceb662f5e48f5765701c17f51a5233a60fbcfa5f9e495fa99d16",
+    "nimbus.dnp.dappnode.eth": "7ad9cfdec75eceb662f5e48f5765701c17f51a5233a60fbcfa5f9e495fa99d17",
+    "prysm.dnp.dappnode.eth": "7ad9cfdec75eceb662f5e48f5765701c17f51a5233a60fbcfa5f9e495fa99d18",
+    "teku.dnp.dappnode.eth": "7ad9cfdec75eceb662f5e48f5765701c17f51a5233a60fbcfa5f9e495fa99d19"
   },
-  {
-    "name": "Nethermind",
-    "url": "http://nethermind.public.dappnode:8551",
-    "jwtsecret": "7ad9cfdec75eceb662f5e48f5765701c17f51a5233a60fbcfa5f9e495fa99d18",
-    "priority": 2
-  },
-  {
-    "name": "Besu",
-    "url": "http://besu.dappnode:8551",
-    "jwtsecret": "7ad9cfdec75eceb662f5e48f5765701c17f51a5233a60fbcfa5f9e495fa99d18",
-    "priority": 3
-  },
-  {
-    "name": "Erigon",
-    "url": "http://erigon.dappnode:8551",
-    "jwtsecret": "7ad9cfdec75eceb662f5e48f5765701c17f51a5233a60fbcfa5f9e495fa99d18",
-    "priority": 4
-  }
-]
+  "executionClients":[
+    {
+      "name": "Geth",
+      "url": "http://geth.dappnode:8551",
+      "priority": 1
+    },
+    {
+      "name": "Nethermind",
+      "url": "http://nethermind.public.dappnode:8551",
+      "priority": 2
+    },
+    {
+      "name": "Besu",
+      "url": "http://besu.public.dappnode:8551",
+      "priority": 3
+    },
+    {
+      "name": "Erigon",
+      "url": "http://erigon.dappnode:8551",
+      "priority": 4
+    }
+  ]
+}
+

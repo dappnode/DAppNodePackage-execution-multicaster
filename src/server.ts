@@ -4,11 +4,6 @@ import fastifyjwt from "@fastify/jwt";
 import jwt from "jsonwebtoken";
 import { ExecutionClientEngine, ExecutionSyncStatus } from "./types";
 
-const MULTICASTER_JWT = Buffer.from(
-  process.env.JWT ||
-    "7ad9cfdec75eceb662f5e48f5765701c17f51a5233a60fbcfa5f9e495fa99d18",
-  "hex"
-);
 const PORT = parseInt(process.env.PORT || "8551");
 
 function getPriorityExecutionClient(executionClients: ExecutionClientEngine[]) {
@@ -19,7 +14,8 @@ function getPriorityExecutionClient(executionClients: ExecutionClientEngine[]) {
 }
 
 export default async function startServer(
-  executionClients: ExecutionClientEngine[]
+  executionClients: ExecutionClientEngine[],
+  serverjwtsecret: Buffer
 ) {
   if (executionClients.length === 0) {
     throw new Error("Server cannot be initialized without execution clients");
@@ -30,20 +26,20 @@ export default async function startServer(
   });
   proxy.register(replyFrom);
   proxy.register(fastifyjwt, {
-    secret: MULTICASTER_JWT,
+    secret: serverjwtsecret,
   });
 
   const topPriorityExecutionClientName = (
     getPriorityExecutionClient(executionClients) as ExecutionClientEngine
   ).name; // safe since it is only undefined for executionClients.length === 0
 
-  //    proxy.addHook("onRequest", async (request, reply) => {
-  //        try {
-  //            await request.jwtVerify()
-  //        } catch (err) {
-  //            reply.send(err)
-  //        }
-  //    })
+      proxy.addHook("onRequest", async (request, reply) => {
+          try {
+              await request.jwtVerify()
+          } catch (err) {
+              reply.send(err)
+          }
+      })
 
   proxy.post("/", (request, reply) => {
     // Both engine_newPayload and enigne_forkChoiceUpdatedV1 can be used to update syncing status of execution clients, 
