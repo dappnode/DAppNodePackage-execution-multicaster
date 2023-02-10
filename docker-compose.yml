@@ -10,6 +10,5 @@ services:
       - BESU_PRIORITY=3
       - ERIGON_PRIORITY=4
       - PORT=
-      - JWT=
       - SYNCING_DELAY_TRESHOLD=
       - PROXY_LOGGER=
